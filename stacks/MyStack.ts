@@ -1,26 +1,31 @@
-import { StackContext, Api, EventBus } from "sst/constructs";
+import { StackContext, Api, Table } from "sst/constructs";
 
 export function API({ stack }: StackContext) {
-  const bus = new EventBus(stack, "bus", {
-    defaults: {
-      retries: 10,
+  const table = new Table(stack, "yt2pc", {
+    fields: {
+      PK: "string",
+      SK: "string",
     },
-  });
+    primaryIndex: { partitionKey: "PK", sortKey: "SK" },
+  })
 
   const api = new Api(stack, "api", {
     defaults: {
+      throttle: {
+        burst: 50,
+        rate: 5,
+      },
       function: {
-        bind: [bus],
+        environment: {
+          "TABLE_NAME": table.tableName,
+        },
+        bind: [table],
       },
     },
     routes: {
       "GET /youtube/{id}": "functions/lambda/youtube/get/main.go",
     },
   });
-
-  // bus.subscribe("todo.created", {
-  //   handler: "packages/functions/src/events/todo-created.handler",
-  // });
 
   stack.addOutputs({
     ApiEndpoint: api.url,
