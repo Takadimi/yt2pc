@@ -3,10 +3,12 @@ package main
 import (
 	"context"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 
 	"github.com/Takadimi/yt2pc/core/rss"
+	"github.com/Takadimi/yt2pc/core/youtube"
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
 )
@@ -21,8 +23,26 @@ func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		}, nil
 	}
 
-	audioURL := fmt.Sprintf("%s/youtube/%s", os.Getenv("API_ENDPOINT"), videoID)
-	rssFeedXML := rss.CreateSingleVideoPodcastFeed(videoID, audioURL)
+	videoData, err := youtube.GetVideoData(ctx, videoID)
+	if err != nil {
+		return serverErrorResponse("failed to get video data", err), nil
+	}
+
+	proxyAudioURL := fmt.Sprintf("%s/youtube/%s", os.Getenv("API_ENDPOINT"), videoID)
+	rssFeedXML, err := rss.CreateSingleVideoPodcastFeed(
+		videoID,
+		videoData.URL,
+		videoData.Title,
+		videoData.Description,
+		videoData.Author,
+		videoData.ThumbnailURL,
+		proxyAudioURL,
+		videoData.Audio.MIMEType,
+		videoData.Audio.ContentLength,
+	)
+	if err != nil {
+		return serverErrorResponse("failed to create RSS feed", err), nil
+	}
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
@@ -31,6 +51,14 @@ func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		},
 		Body: rssFeedXML,
 	}, nil
+}
+
+func serverErrorResponse(description string, err error) events.APIGatewayProxyResponse {
+	log.Printf("%s: %s", description, err)
+	return events.APIGatewayProxyResponse{
+		StatusCode: 500,
+		Body:       description,
+	}
 }
 
 func main() {

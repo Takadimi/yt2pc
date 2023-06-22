@@ -20,21 +20,25 @@ func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		}, nil
 	}
 
-	audioURL, err := youtube.GetAudioURLForVideo(ctx, videoID)
+	videoData, err := youtube.GetVideoData(ctx, videoID)
 	if err != nil {
-		log.Println(err)
-		return events.APIGatewayProxyResponse{
-			StatusCode: 500,
-			Body:       "failed to get audio url",
-		}, nil
+		return serverErrorResponse("failed to get video data", err), nil
 	}
 
 	return events.APIGatewayProxyResponse{
 		StatusCode: 307, // temporary redirect
 		Headers: map[string]string{
-			"Location": audioURL,
+			"Location": videoData.Audio.URL,
 		},
 	}, nil
+}
+
+func serverErrorResponse(description string, err error) events.APIGatewayProxyResponse {
+	log.Printf("%s: %s", description, err)
+	return events.APIGatewayProxyResponse{
+		StatusCode: 500,
+		Body:       description,
+	}
 }
 
 func main() {

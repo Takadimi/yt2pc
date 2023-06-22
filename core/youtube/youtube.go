@@ -1,113 +1,66 @@
 package youtube
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
 	"strings"
 )
 
-type Video struct {
-	VideoID string
+type VideoData struct {
+	ID           string
+	URL          string
+	Title        string
+	Description  string
+	Author       string
+	ThumbnailURL string
+	Audio        Audio
 }
 
-func GetAudioURLForVideo(ctx context.Context, videoID string) (string, error) {
-	hc := http.DefaultClient
+type Audio struct {
+	URL           string
+	MIMEType      string
+	ContentLength string // size in bytes
+}
 
-	// test youtube-dl video (10s) "BaW_jenozKc"
-	videoData, err := videoDataByInnertube(hc, videoID)
+func GetVideoData(ctx context.Context, videoID string) (VideoData, error) {
+	innertubeVideoData, err := VideoDataByInnertube(http.DefaultClient, videoID)
 	if err != nil {
-		log.Fatal(err)
+		return VideoData{}, fmt.Errorf("GetVideoData innertube api call: %w", err)
 	}
 
 	var resp innertubeResponse
-	if err := json.Unmarshal(videoData, &resp); err != nil {
-		log.Fatal(err)
+	if err := json.Unmarshal(innertubeVideoData, &resp); err != nil {
+		return VideoData{}, fmt.Errorf("GetVideoData innertube response unmarshaling: %w", err)
 	}
 
-	var audioMP4URL string
+	var audio Audio
 	for _, format := range resp.StreamingData.AdaptiveFormats {
 		if strings.Contains(format.MimeType, "audio/mp4") {
-			audioMP4URL = format.Url
+			audio.URL = format.URL
+			audio.MIMEType = "audio/mp4"
+			audio.ContentLength = format.ContentLength
+			break
 		}
 	}
 
-	if audioMP4URL == "" {
-		return "", fmt.Errorf("no audio URL for video ID %q", videoID)
+	var thumbnailURL string
+	if len(resp.VideoDetails.Thumbnail.Thumbnails) > 0 {
+		thumbnailURL = resp.VideoDetails.Thumbnail.Thumbnails[0].URL
 	}
 
-	return audioMP4URL, nil
+	return VideoData{
+		ID:           videoID,
+		URL:          url(videoID),
+		Title:        resp.VideoDetails.Title,
+		Description:  resp.VideoDetails.ShortDescription,
+		Author:       resp.VideoDetails.Author,
+		ThumbnailURL: thumbnailURL,
+		Audio:        audio,
+	}, nil
 }
 
-type innertubeResponse struct {
-	StreamingData innertubeStreamingData `json:"streamingData"`
-}
-
-type innertubeStreamingData struct {
-	AdaptiveFormats []innertubeAdaptiveFormat `json:"adaptiveFormats"`
-}
-
-type innertubeAdaptiveFormat struct {
-	MimeType     string `json:"mimeType"`
-	AudioQuality string `json:"audioQuality"`
-	Url          string `json:"url"`
-}
-
-type innertubeRequest struct {
-	Context inntertubeContext `json:"context"`
-	VideoID string            `json:"videoId"`
-}
-
-type inntertubeContext struct {
-	Client innertubeClient `json:"client"`
-}
-
-type innertubeClient struct {
-	BrowserName    string `json:"browserName"`
-	BrowserVersion string `json:"browserVersion"`
-	ClientName     string `json:"clientName"`
-	ClientVersion  string `json:"clientVersion"`
-}
-
-func videoDataByInnertube(c *http.Client, id string) ([]byte, error) {
-	// seems like same token for all WEB clients
-	const webToken = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
-	u := fmt.Sprintf("https://www.youtube.com/youtubei/v1/player?key=%s", webToken)
-
-	data := innertubeRequest{
-		Context: inntertubeContext{
-			Client: innertubeClient{
-				BrowserName:    "Mozilla",
-				BrowserVersion: "5.0",
-				ClientName:     "WEB",
-				ClientVersion:  "2.20210617.01.00",
-			},
-		},
-		VideoID: id,
-	}
-
-	reqData, err := json.Marshal(data)
-	if err != nil {
-		return nil, err
-	}
-
-	req, err := http.NewRequest(http.MethodPost, u, bytes.NewReader(reqData))
-	if err != nil {
-		return nil, err
-	}
-
-	resp, err := c.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	return io.ReadAll(resp.Body)
+func url(videoID string) string {
+	return fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
 }
