@@ -54,6 +54,15 @@ func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		return serverErrorResponse("failed to create RSS feed", err), nil
 	}
 
+	if request.RequestContext.HTTP.Method == "HEAD" {
+		return events.APIGatewayProxyResponse{
+			StatusCode: 200,
+			Headers: map[string]string{
+				"Content-Type": "text/xml",
+			},
+		}, nil
+	}
+
 	return events.APIGatewayProxyResponse{
 		StatusCode: 200,
 		Headers: map[string]string{

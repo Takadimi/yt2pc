@@ -31,6 +31,16 @@ func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		{"audio/mp4", youtube.AudioQualityHigh},
 	})
 
+	if request.RequestContext.HTTP.Method == "HEAD" {
+		return events.APIGatewayProxyResponse{
+			StatusCode: 200,
+			Headers: map[string]string{
+				"Content-Length": audioStream.ContentLength,
+				"Content-Type":   audioStream.FullMIMEType,
+			},
+		}, nil
+	}
+
 	return events.APIGatewayProxyResponse{
 		StatusCode: 307, // temporary redirect
 		Headers: map[string]string{

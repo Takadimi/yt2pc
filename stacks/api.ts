@@ -19,7 +19,9 @@ export function API({ stack }: StackContext) {
     },
     routes: {
       "GET /youtube/{id}": "functions/lambda/youtube/get/main.go",
+      "HEAD /youtube/{id}": "functions/lambda/youtube/get/main.go",
       "GET /rss/youtube/{id}": "functions/lambda/rss/youtube/get/main.go",
+      "HEAD /rss/youtube/{id}": "functions/lambda/rss/youtube/get/main.go",
     },
     customDomain: {
       domainName: apiDomainName,

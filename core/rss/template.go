@@ -26,7 +26,9 @@ const podcastTemplateWithItunes = `<?xml version="1.0" encoding="UTF-8"?>
     <itunes:author>{{.Author}}</itunes:author>
     <itunes:subtitle>{{.Description}}</itunes:subtitle>
     <itunes:summary>{{.Description}}</itunes:summary>
-    <itunes:image>{{.ThumbnailURL}}</itunes:image>
+    <itunes:image href="{{.ThumbnailURL}}" />
+    <itunes:explicit>no</itunes:explicit>
+    <itunes:category text="Technology" />
     <item>
       <title>{{.Title}}</title>
       <podcast:episode>1</podcast:episode>
