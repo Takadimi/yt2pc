@@ -5,7 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 )
 
 type VideoData struct {
@@ -16,12 +18,56 @@ type VideoData struct {
 	Author       string
 	ThumbnailURL string
 	Audio        Audio
+	AudioStreams []AudioStream
 }
 
 type Audio struct {
 	URL           string
 	MIMEType      string
 	ContentLength string // size in bytes
+}
+
+type AudioStream struct {
+	URL           string
+	MIMEType      string
+	FullMIMEType  string
+	ContentLength string // size in bytes
+	AudioQuality  AudioQuality
+	Bitrate       int
+	Duration      time.Duration
+}
+
+type AudioQuality int
+
+const (
+	AudioQualityUnknown AudioQuality = iota
+	AudioQualityLow
+	AudioQualityMedium
+	AudioQualityHigh
+)
+
+type AudioPreference struct {
+	MIMEType     string
+	AudioQuality AudioQuality
+}
+
+func (videoData VideoData) GetAudioStream(preferences []AudioPreference) AudioStream {
+	streamsByQuality := map[AudioPreference]AudioStream{}
+
+	for _, stream := range videoData.AudioStreams {
+		streamsByQuality[AudioPreference{
+			MIMEType:     stream.MIMEType,
+			AudioQuality: stream.AudioQuality,
+		}] = stream
+	}
+
+	for _, preference := range preferences {
+		if stream, hasStream := streamsByQuality[preference]; hasStream {
+			return stream
+		}
+	}
+
+	return AudioStream{}
 }
 
 func GetVideoData(ctx context.Context, videoID string) (VideoData, error) {
@@ -35,13 +81,34 @@ func GetVideoData(ctx context.Context, videoID string) (VideoData, error) {
 		return VideoData{}, fmt.Errorf("GetVideoData innertube response unmarshaling: %w", err)
 	}
 
-	var audio Audio
+	audioStreams := make([]AudioStream, 0)
 	for _, format := range resp.StreamingData.AdaptiveFormats {
-		if strings.Contains(format.MimeType, "audio/mp4") {
-			audio.URL = format.URL
-			audio.MIMEType = "audio/mp4"
-			audio.ContentLength = format.ContentLength
-			break
+		if strings.HasPrefix(format.MIMEType, "audio") {
+			var quality AudioQuality
+			switch format.AudioQuality {
+			case "AUDIO_QUALITY_LOW":
+				quality = AudioQualityLow
+			case "AUDIO_QUALITY_MEDIUM":
+				quality = AudioQualityMedium
+			case "AUDIO_QUALITY_HIGH":
+				quality = AudioQualityHigh
+			}
+
+			durationInt, err := strconv.Atoi(format.ApproxDurationMs)
+			if err != nil {
+				return VideoData{}, fmt.Errorf("GetVideoData innertube response duration parsing: %w", err)
+			}
+			duration := time.Millisecond * time.Duration(durationInt)
+
+			audioStreams = append(audioStreams, AudioStream{
+				URL:           format.URL,
+				MIMEType:      basicMIMEType(format.MIMEType),
+				FullMIMEType:  format.MIMEType,
+				ContentLength: format.ContentLength,
+				AudioQuality:  quality,
+				Bitrate:       format.Bitrate,
+				Duration:      duration,
+			})
 		}
 	}
 
@@ -57,10 +124,15 @@ func GetVideoData(ctx context.Context, videoID string) (VideoData, error) {
 		Description:  resp.VideoDetails.ShortDescription,
 		Author:       resp.VideoDetails.Author,
 		ThumbnailURL: thumbnailURL,
-		Audio:        audio,
+		AudioStreams: audioStreams,
 	}, nil
 }
 
 func url(videoID string) string {
 	return fmt.Sprintf("https://www.youtube.com/watch?v=%s", videoID)
+}
+
+func basicMIMEType(mimeType string) string {
+	parts := strings.Split(mimeType, ";")
+	return parts[0]
 }

@@ -25,10 +25,16 @@ func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		return serverErrorResponse("failed to get video data", err), nil
 	}
 
+	audioStream := videoData.GetAudioStream([]youtube.AudioPreference{
+		{"audio/mp4", youtube.AudioQualityLow},
+		{"audio/mp4", youtube.AudioQualityMedium},
+		{"audio/mp4", youtube.AudioQualityHigh},
+	})
+
 	return events.APIGatewayProxyResponse{
 		StatusCode: 307, // temporary redirect
 		Headers: map[string]string{
-			"Location": videoData.Audio.URL,
+			"Location": audioStream.URL,
 		},
 	}, nil
 }

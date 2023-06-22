@@ -18,9 +18,12 @@ type innertubeStreamingData struct {
 }
 
 type innertubeAdaptiveFormat struct {
-	MimeType      string `json:"mimeType"`
-	URL           string `json:"url"`
-	ContentLength string `json:"contentLength"`
+	MIMEType         string `json:"mimeType"`
+	URL              string `json:"url"`
+	ContentLength    string `json:"contentLength"`
+	AudioQuality     string `json:"audioQuality"`
+	Bitrate          int    `json:"bitrate"`
+	ApproxDurationMs string `json:"approxDurationMs"`
 }
 
 type innertubeVideoDetails struct {
@@ -42,36 +45,74 @@ type innertubeThumbnailItem struct {
 }
 
 type innertubeRequest struct {
-	Context inntertubeContext `json:"context"`
-	VideoID string            `json:"videoId"`
+	VideoID         string                    `json:"videoId,omitempty"`
+	BrowseID        string                    `json:"browseId,omitempty"`
+	Continuation    string                    `json:"continuation,omitempty"`
+	Context         inntertubeContext         `json:"context"`
+	PlaybackContext *innertubePlaybackContext `json:"playbackContext,omitempty"`
+	ContentCheckOK  bool                      `json:"contentCheckOk,omitempty"`
+	RacyCheckOk     bool                      `json:"racyCheckOk,omitempty"`
+	Params          string                    `json:"params"`
 }
 
 type inntertubeContext struct {
 	Client innertubeClient `json:"client"`
 }
 
+type innertubePlaybackContext struct {
+	ContentPlaybackContext innertubeContentPlaybackContext `json:"contentPlaybackContext"`
+}
+
+type innertubeContentPlaybackContext struct {
+	HTML5Preference string `json:"html5Preference"`
+}
+
+type innertubeClientInfo struct {
+	Key    string
+	Client innertubeClient
+}
+
 type innertubeClient struct {
-	BrowserName    string `json:"browserName"`
-	BrowserVersion string `json:"browserVersion"`
-	ClientName     string `json:"clientName"`
-	ClientVersion  string `json:"clientVersion"`
+	HL                string `json:"hl"`
+	GL                string `json:"gl"`
+	ClientName        string `json:"clientName"`
+	ClientVersion     string `json:"clientVersion"`
+	AndroidSDKVersion int    `json:"androidSDKVersion,omitempty"`
+	UserAgent         string `json:"userAgent,omitempty"`
+	TimeZone          string `json:"timeZone"`
+	UTCOffset         int    `json:"utcOffsetMinutes"`
+}
+
+// Leverage Android's client key and data
+var clientInfo = innertubeClientInfo{
+	Key: "AIzaSyA8eiZmM1FaDVjRy-df2KTyQ_vz_yYM39w",
+	Client: innertubeClient{
+		HL:                "en",
+		GL:                "US",
+		TimeZone:          "UTC",
+		ClientName:        "ANDROID",
+		ClientVersion:     "17.31.35",
+		UserAgent:         "com.google.android.youtube/17.31.35 (Linux; U; Android 11) gzip",
+		AndroidSDKVersion: 30,
+	},
 }
 
 func VideoDataByInnertube(c *http.Client, id string) ([]byte, error) {
-	// seems like same token for all WEB clients
-	const webToken = "AIzaSyAO_FJ2SlqU8Q4STEHLGCilw_Y9_11qcW8"
-	u := fmt.Sprintf("https://www.youtube.com/youtubei/v1/player?key=%s", webToken)
+	u := fmt.Sprintf("https://www.youtube.com/youtubei/v1/player?key=%s", clientInfo.Key)
 
 	data := innertubeRequest{
 		Context: inntertubeContext{
-			Client: innertubeClient{
-				BrowserName:    "Mozilla",
-				BrowserVersion: "5.0",
-				ClientName:     "WEB",
-				ClientVersion:  "2.20210617.01.00",
+			Client: clientInfo.Client,
+		},
+		VideoID:        id,
+		ContentCheckOK: true,
+		RacyCheckOk:    true,
+		Params:         "8AEB",
+		PlaybackContext: &innertubePlaybackContext{
+			ContentPlaybackContext: innertubeContentPlaybackContext{
+				HTML5Preference: "HTML5_PREF_WANTS",
 			},
 		},
-		VideoID: id,
 	}
 
 	reqData, err := json.Marshal(data)

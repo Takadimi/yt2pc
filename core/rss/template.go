@@ -2,19 +2,18 @@ package rss
 
 import (
 	"fmt"
-	nurl "net/url"
 	"strings"
 	"text/template"
 	"time"
 )
 
-const podcastTemplate = `<?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0">
+const podcastTemplateWithItunes = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:podcast="https://podcastindex.org/namespace/1.0" xmlns:itunes="http://www.itunes.com/dtds/podcast-1.0.dtd">
   <channel>
     <title>{{.Title}}</title>
     <description>{{.Description}}</description>
     <podcast:guid>{{.ID}}</podcast:guid>
-    <podcast:locked>yes</podcast:locked>
+    <podcast:locked>no</podcast:locked>
     <language>en</language>
     <pubDate>{{.PubDate}}</pubDate>
     <lastBuildDate>{{.BuildDate}}</lastBuildDate>
@@ -24,6 +23,10 @@ const podcastTemplate = `<?xml version="1.0" encoding="UTF-8"?>
         <title>{{.Title}}</title>
         <link>{{.Link}}</link>
     </image>
+    <itunes:author>{{.Author}}</itunes:author>
+    <itunes:subtitle>{{.Description}}</itunes:subtitle>
+    <itunes:summary>{{.Description}}</itunes:summary>
+    <itunes:image>{{.ThumbnailURL}}</itunes:image>
     <item>
       <title>{{.Title}}</title>
       <podcast:episode>1</podcast:episode>
@@ -32,6 +35,11 @@ const podcastTemplate = `<?xml version="1.0" encoding="UTF-8"?>
       <description>{{.Description}}</description>
       <pubDate>{{.PubDate}}</pubDate>
       <author>{{.Author}}</author>
+      <itunes:author>{{.Author}}</itunes:author>
+      <itunes:subtitle>{{.Description}}</itunes:subtitle>
+      <itunes:summary>{{.Description}}</itunes:summary>
+      <itunes:length>{{.AudioContentLength}}</itunes:length>
+      <itunes:duration>{{.AudioDuration}}</itunes:duration>
       <enclosure url="{{.AudioURL}}" length="{{.AudioContentLength}}" type="{{.AudioMIMEType}}"/>
     </item>
   </channel>
@@ -49,19 +57,14 @@ type templateData struct {
 	AudioURL           string
 	AudioContentLength string
 	AudioMIMEType      string
+	AudioDuration      string
 }
 
-func CreateSingleVideoPodcastFeed(id, url, title, description, author, thumbnailURL, audioURL, audioMIMEType, audioContentLength string) (string, error) {
-	t, err := template.New("podcastFeed").Parse(podcastTemplate)
+func CreateSingleVideoPodcastFeed(id, url, title, description, author, thumbnailURL, audioURL, audioMIMEType, audioContentLength string, audioDuration time.Duration) (string, error) {
+	t, err := template.New("podcastFeed").Parse(podcastTemplateWithItunes)
 	if err != nil {
 		return "", fmt.Errorf("CreateSingleVideoPodcastFeed parse template: %w", err)
 	}
-
-	tu, err := nurl.Parse(thumbnailURL)
-	if err != nil {
-		return "", fmt.Errorf("CreateSingleVideoPodcastFeed parse thumbnail URL: %w", err)
-	}
-	tu.RawQuery = ""
 
 	nowDateStr := time.Now().Format(time.RFC1123Z)
 	td := templateData{
@@ -72,10 +75,11 @@ func CreateSingleVideoPodcastFeed(id, url, title, description, author, thumbnail
 		BuildDate:          nowDateStr,
 		Link:               url,
 		Author:             author,
-		ThumbnailURL:       tu.String(),
+		ThumbnailURL:       strings.Split(thumbnailURL, "?")[0],
 		AudioURL:           audioURL,
 		AudioContentLength: audioContentLength,
 		AudioMIMEType:      audioMIMEType,
+		AudioDuration:      hms(audioDuration),
 	}
 
 	var sb strings.Builder
@@ -84,4 +88,14 @@ func CreateSingleVideoPodcastFeed(id, url, title, description, author, thumbnail
 	}
 
 	return sb.String(), nil
+}
+
+func hms(duration time.Duration) string {
+	totalSecs := int(duration.Seconds())
+	h := totalSecs / 3600
+	totalSecs = totalSecs % 3600
+	m := totalSecs / 60
+	s := totalSecs % 60
+
+	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
 }

@@ -27,8 +27,19 @@ func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 	if err != nil {
 		return serverErrorResponse("failed to get video data", err), nil
 	}
+	log.Printf("%#v", videoData.AudioStreams)
+
+	audioStream := videoData.GetAudioStream([]youtube.AudioPreference{
+		{"audio/mp4", youtube.AudioQualityLow},
+		{"audio/mp4", youtube.AudioQualityMedium},
+		{"audio/mp4", youtube.AudioQualityHigh},
+	})
+	if audioStream.URL == "" {
+		return serverErrorResponse("no matching audio stream for video", err), nil
+	}
 
 	proxyAudioURL := fmt.Sprintf("%s/youtube/%s", os.Getenv("API_ENDPOINT"), videoID)
+	log.Println(audioStream.Duration)
 	rssFeedXML, err := rss.CreateSingleVideoPodcastFeed(
 		videoID,
 		videoData.URL,
@@ -37,8 +48,9 @@ func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		videoData.Author,
 		videoData.ThumbnailURL,
 		proxyAudioURL,
-		videoData.Audio.MIMEType,
-		videoData.Audio.ContentLength,
+		audioStream.MIMEType,
+		audioStream.ContentLength,
+		audioStream.Duration,
 	)
 	if err != nil {
 		return serverErrorResponse("failed to create RSS feed", err), nil
