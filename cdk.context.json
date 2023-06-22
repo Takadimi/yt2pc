@@ -1,0 +1,10 @@
+{
+  "hosted-zone:account=455074819912:domainName=dev.yt2pc.ethanwoodward.net:region=us-east-1": {
+    "Id": "/hostedzone/Z07131273N8YYE2R45HBB",
+    "Name": "dev.yt2pc.ethanwoodward.net."
+  },
+  "hosted-zone:account=455074819912:domainName=ethanwoodward.net:region=us-east-1": {
+    "Id": "/hostedzone/Z2PEGICXMKECVQ",
+    "Name": "ethanwoodward.net."
+  }
+}

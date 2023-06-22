@@ -1,5 +1,6 @@
 import { SSTConfig } from "sst";
-import { API } from "./stacks/MyStack";
+import { API } from "./stacks/api";
+import { DNS } from "./stacks/dns";
 
 export default {
   config(_input) {
@@ -9,9 +10,14 @@ export default {
     };
   },
   stacks(app) {
+    if (app.stage !== "production") {
+      app.setDefaultRemovalPolicy("destroy");
+    }
     app.setDefaultFunctionProps({
       runtime: "go1.x",
     });
-    app.stack(API);
+    app
+      .stack(DNS)
+      .stack(API);
   }
 } satisfies SSTConfig;

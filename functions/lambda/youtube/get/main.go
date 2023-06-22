@@ -10,8 +10,6 @@ import (
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-var youtubeSvc youtube.Youtube
-
 func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (events.APIGatewayProxyResponse, error) {
 	videoID, hasVideoID := request.PathParameters["id"]
 	videoID = strings.TrimSpace(videoID)
@@ -22,7 +20,7 @@ func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		}, nil
 	}
 
-	audioURL, err := youtubeSvc.GetAudioURLForVideo(ctx, videoID)
+	audioURL, err := youtube.GetAudioURLForVideo(ctx, videoID)
 	if err != nil {
 		log.Println(err)
 		return events.APIGatewayProxyResponse{
@@ -40,7 +38,5 @@ func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 }
 
 func main() {
-	youtubeSvc = youtube.New()
-
 	lambda.Start(Handler)
 }
