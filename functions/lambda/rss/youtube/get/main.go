@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/Takadimi/yt2pc/core/rss"
@@ -20,7 +21,7 @@ func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 		}, nil
 	}
 
-	audioURL := fmt.Sprintf("https://yq0hieyjqa.execute-api.us-east-1.amazonaws.com/youtube/%s", videoID)
+	audioURL := fmt.Sprintf("%s/youtube/%s", os.Getenv("API_ENDPOINT"), videoID)
 	rssFeedXML := rss.CreateSingleVideoPodcastFeed(videoID, audioURL)
 
 	return events.APIGatewayProxyResponse{

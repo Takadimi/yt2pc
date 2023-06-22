@@ -4,6 +4,8 @@ import { DNS } from "./dns";
 export function API({ stack }: StackContext) {
   const dns = use(DNS);
 
+  const apiDomainName = "api."+dns.domain;
+
   const api = new Api(stack, "api", {
     defaults: {
       throttle: {
@@ -20,10 +22,13 @@ export function API({ stack }: StackContext) {
       "GET /rss/youtube/{id}": "functions/lambda/rss/youtube/get/main.go",
     },
     customDomain: {
-      domainName: "api."+dns.domain,
+      domainName: apiDomainName,
       hostedZone: dns.zone,
     },
   });
+
+  const rssFeedFunc = api.getFunction("GET /rss/youtube/{id}");
+  rssFeedFunc?.addEnvironment("API_ENDPOINT", api.customDomainUrl || api.url);
 
   stack.addOutputs({
     ApiEndpoint: api.customDomainUrl || api.url,
