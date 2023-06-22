@@ -9,8 +9,13 @@ import (
 )
 
 type innertubeResponse struct {
-	StreamingData innertubeStreamingData `json:"streamingData"`
-	VideoDetails  innertubeVideoDetails  `json:"videoDetails"`
+	PlayabilityStatus innertubePlayabilityStatus `json:"playabilityStatus"`
+	StreamingData     innertubeStreamingData     `json:"streamingData"`
+	VideoDetails      innertubeVideoDetails      `json:"videoDetails"`
+}
+
+type innertubePlayabilityStatus struct {
+	Status string `json:"status"`
 }
 
 type innertubeStreamingData struct {

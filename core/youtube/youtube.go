@@ -3,6 +3,7 @@ package youtube
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -70,6 +71,8 @@ func (videoData VideoData) GetAudioStream(preferences []AudioPreference) AudioSt
 	return AudioStream{}
 }
 
+var ErrVideoNotAvailable = errors.New("video not available")
+
 func GetVideoData(ctx context.Context, videoID string) (VideoData, error) {
 	innertubeVideoData, err := VideoDataByInnertube(http.DefaultClient, videoID)
 	if err != nil {
@@ -79,6 +82,10 @@ func GetVideoData(ctx context.Context, videoID string) (VideoData, error) {
 	var resp innertubeResponse
 	if err := json.Unmarshal(innertubeVideoData, &resp); err != nil {
 		return VideoData{}, fmt.Errorf("GetVideoData innertube response unmarshaling: %w", err)
+	}
+
+	if resp.PlayabilityStatus.Status != "OK" {
+		return VideoData{}, ErrVideoNotAvailable
 	}
 
 	audioStreams := make([]AudioStream, 0)

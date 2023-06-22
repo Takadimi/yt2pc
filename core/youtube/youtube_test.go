@@ -2,17 +2,23 @@ package youtube_test
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/Takadimi/yt2pc/core/youtube"
 )
 
-func TestGetVideoData(t *testing.T) {
+func TestGetVideoDataVideoFound(t *testing.T) {
 	ctx := context.Background()
-	vd, err := youtube.GetVideoData(ctx, "BaW_jenozKc")
+	_, err := youtube.GetVideoData(ctx, "BaW_jenozKc")
 	if err != nil {
 		t.Fatal(err)
 	}
-	fmt.Printf("%#v\n", vd)
+}
+
+func TestGetVideoDataNotFound(t *testing.T) {
+	ctx := context.Background()
+	_, err := youtube.GetVideoData(ctx, "garbage")
+	if err != youtube.ErrVideoNotAvailable {
+		t.Fatal("expected ErrVideoNotAvailable, but error is nil")
+	}
 }
