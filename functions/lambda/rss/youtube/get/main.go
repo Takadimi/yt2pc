@@ -27,7 +27,6 @@ func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 	if err != nil {
 		return serverErrorResponse("failed to get video data", err), nil
 	}
-	log.Printf("%#v", videoData.AudioStreams)
 
 	audioStream := videoData.GetAudioStream([]youtube.AudioPreference{
 		{"audio/mp4", youtube.AudioQualityLow},
@@ -39,7 +38,6 @@ func Handler(ctx context.Context, request events.APIGatewayV2HTTPRequest) (event
 	}
 
 	proxyAudioURL := fmt.Sprintf("%s/youtube/%s", os.Getenv("API_ENDPOINT"), videoID)
-	log.Println(audioStream.Duration)
 	rssFeedXML, err := rss.CreateSingleVideoPodcastFeed(
 		videoID,
 		videoData.URL,
