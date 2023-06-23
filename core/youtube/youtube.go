@@ -18,14 +18,7 @@ type VideoData struct {
 	Description  string
 	Author       string
 	ThumbnailURL string
-	Audio        Audio
 	AudioStreams []AudioStream
-}
-
-type Audio struct {
-	URL           string
-	MIMEType      string
-	ContentLength string // size in bytes
 }
 
 type AudioStream struct {
